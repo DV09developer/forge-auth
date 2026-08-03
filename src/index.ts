@@ -1,4 +1,4 @@
-// simple-auth — public API
+// forge-auth — public API
 // Only what is exported from this file is visible to consumers of the package.
 // Internal helpers in `utils/` are intentionally NOT re-exported here.
 

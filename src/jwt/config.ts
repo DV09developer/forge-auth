@@ -20,14 +20,14 @@ function readSecret(envVar: string): string {
 
   if (!secret) {
     throw new Error(
-      `simple-auth: missing required environment variable "${envVar}". ` +
+      `forge-auth: missing required environment variable "${envVar}". ` +
         `Set it to a random string of at least ${MIN_SECRET_LENGTH} characters.`
     );
   }
 
   if (secret.length < MIN_SECRET_LENGTH) {
     throw new Error(
-      `simple-auth: "${envVar}" is too short (${secret.length} chars). ` +
+      `forge-auth: "${envVar}" is too short (${secret.length} chars). ` +
         `Use at least ${MIN_SECRET_LENGTH} characters to resist brute-force attacks.`
     );
   }

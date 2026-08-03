@@ -49,7 +49,7 @@ describe("access tokens", () => {
     const expiredToken = jwt.sign(
       { sub: "user-123", type: "access" },
       TEST_ACCESS_SECRET,
-      { algorithm: "HS256", expiresIn: "-1s", issuer: "simple-auth" }
+      { algorithm: "HS256", expiresIn: "-1s", issuer: "forge-auth" }
     );
 
     expect(() => verifyAccessToken(expiredToken)).toThrow("Token has expired");
@@ -86,7 +86,7 @@ describe("refresh tokens", () => {
     const badToken = jwt.sign(
       { sub: "user-456", type: "access" },
       TEST_REFRESH_SECRET,
-      { algorithm: "HS256", expiresIn: "7d", issuer: "simple-auth" }
+      { algorithm: "HS256", expiresIn: "7d", issuer: "forge-auth" }
     );
     expect(() => verifyRefreshToken(badToken)).toThrow(
       "Token is not a refresh token"

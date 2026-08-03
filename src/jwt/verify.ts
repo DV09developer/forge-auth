@@ -2,7 +2,7 @@ import jwt from "jsonwebtoken";
 import type { TokenPayload } from "../types/index.js";
 import { getAccessTokenSecret, getRefreshTokenSecret } from "./config.js";
 
-const ISSUER = "simple-auth";
+const ISSUER = "forge-auth";
 
 /**
  * Verifies a raw JWT and returns its decoded payload, using the given
