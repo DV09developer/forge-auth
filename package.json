@@ -1,6 +1,6 @@
 {
     "name": "forge-auth",
-    "version": "0.1.0",
+    "version": "0.2.0",
     "description": "A lightweight authentication toolkit: secure building blocks (password hashing, JWT, middleware) with sensible defaults — no database, no opinions.",
     "type": "module",
     "main": "./dist/index.cjs",
