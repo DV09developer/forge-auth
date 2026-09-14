@@ -6,6 +6,7 @@ import {
   ACCESS_TOKEN_EXPIRY,
   REFRESH_TOKEN_EXPIRY,
 } from "./config.js";
+import { randomUUID } from "crypto";
 
 const ISSUER = "forge-auth";
 
@@ -55,7 +56,7 @@ export function createAccessToken(
 export function createRefreshToken(user: AuthUser): string {
   const secret = getRefreshTokenSecret();
 
-  return jwt.sign({ sub: user.id, type: "refresh" }, secret, {
+  return jwt.sign({ sub: user.id, type: "refresh", jti: randomUUID() }, secret, {
     algorithm: "HS256",
     expiresIn: REFRESH_TOKEN_EXPIRY,
     issuer: ISSUER,

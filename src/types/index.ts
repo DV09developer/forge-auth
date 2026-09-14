@@ -25,5 +25,7 @@ export type TokenType = "access" | "refresh";
 export interface TokenPayload {
   sub: string;
   type: TokenType;
+  /** Unique token identifier. Present on refresh tokens (see createRefreshToken). */
+  jti?: string;
   [key: string]: unknown;
 }

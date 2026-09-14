@@ -1,13 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import jwt from "jsonwebtoken";
-import {
-  createAccessToken,
-  createRefreshToken,
-} from "../src/jwt/sign.js";
-import {
-  verifyAccessToken,
-  verifyRefreshToken,
-} from "../src/jwt/verify.js";
+import { createAccessToken, createRefreshToken } from "../src/jwt/sign.js";
+import { verifyAccessToken, verifyRefreshToken } from "../src/jwt/verify.js";
 
 const TEST_ACCESS_SECRET = "a".repeat(32);
 const TEST_REFRESH_SECRET = "b".repeat(32);
@@ -49,7 +43,7 @@ describe("access tokens", () => {
     const expiredToken = jwt.sign(
       { sub: "user-123", type: "access" },
       TEST_ACCESS_SECRET,
-      { algorithm: "HS256", expiresIn: "-1s", issuer: "forge-auth" }
+      { algorithm: "HS256", expiresIn: "-1s", issuer: "forge-auth" },
     );
 
     expect(() => verifyAccessToken(expiredToken)).toThrow("Token has expired");
@@ -86,10 +80,10 @@ describe("refresh tokens", () => {
     const badToken = jwt.sign(
       { sub: "user-456", type: "access" },
       TEST_REFRESH_SECRET,
-      { algorithm: "HS256", expiresIn: "7d", issuer: "forge-auth" }
+      { algorithm: "HS256", expiresIn: "7d", issuer: "forge-auth" },
     );
     expect(() => verifyRefreshToken(badToken)).toThrow(
-      "Token is not a refresh token"
+      "Token is not a refresh token",
     );
   });
 });
@@ -100,7 +94,7 @@ describe("secret validation", () => {
     delete process.env.JWT_ACCESS_SECRET;
 
     expect(() => createAccessToken({ id: "user-789" })).toThrow(
-      /missing required environment variable "JWT_ACCESS_SECRET"/
+      /missing required environment variable "JWT_ACCESS_SECRET"/,
     );
 
     process.env.JWT_ACCESS_SECRET = saved;
@@ -110,10 +104,22 @@ describe("secret validation", () => {
     const saved = process.env.JWT_ACCESS_SECRET;
     process.env.JWT_ACCESS_SECRET = "too-short";
 
-    expect(() => createAccessToken({ id: "user-789" })).toThrow(
-      /too short/
-    );
+    expect(() => createAccessToken({ id: "user-789" })).toThrow(/too short/);
 
     process.env.JWT_ACCESS_SECRET = saved;
+  });
+
+  // tests/jwt.test.ts (add to the "refresh tokens" describe block)
+
+  it("never produces identical tokens for back-to-back calls (jti uniqueness)", () => {
+    // Regression test: HS256 signing is deterministic and `iat` has only
+    // second-level precision, so without a unique `jti` claim, two refresh
+    // tokens issued for the same user within the same second would be
+    // byte-identical — silently breaking any hash-based lookup that keys
+    // on the token string (see the refresh-rotation module).
+    const tokenA = createRefreshToken({ id: "user-999" });
+    const tokenB = createRefreshToken({ id: "user-999" });
+
+    expect(tokenA).not.toBe(tokenB);
   });
 });
