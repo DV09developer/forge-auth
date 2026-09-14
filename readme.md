@@ -232,6 +232,14 @@ const refreshToken = createRefreshToken({ id: user.id });
 // Send this to the client to store securely (e.g. an httpOnly cookie).
 ```
 
+> ⚠️ **Choosing between `createRefreshToken` and `issueRefreshToken`:**
+> This function signs a refresh token but does **not** track it — there's no
+> way to rotate or revoke it later. If you want rotation, reuse detection,
+> or logout support (see [Refresh Token Rotation](#refresh-token-rotation--reuse-detection)
+> below), use `issueRefreshToken()` at login instead. Use plain
+> `createRefreshToken()` only if you're intentionally handling revocation
+> yourself, elsewhere.  
+
 ### `verifyAccessToken(token)`
 
 Checks that an access token is valid, not expired, and really is an access
@@ -267,6 +275,110 @@ const newAccessToken = createAccessToken({ id: payload.sub });
 > issues and checks tokens.
 
 ---
+
+## Refresh Token Rotation & Reuse Detection
+
+Plain refresh tokens (issued via `createRefreshToken`) are valid until they
+expire — there's no way to tell a legitimate refresh apart from a stolen
+token being replayed by an attacker. This module adds **rotation**
+(every refresh invalidates the old token and issues a new one) and
+**reuse detection** (if an already-used token is presented again, the
+entire session is revoked immediately).
+
+This is the difference between "authentication working" and
+"authentication done right" — most tutorials stop at signing a JWT and
+never implement this.
+
+### How it works
+
+- Every refresh token belongs to a **family** — a lineage created when you
+  call `issueRefreshToken`, shared across every token that family gets
+  rotated into.
+- Rotating a token retires it (`status: "rotated"`) and issues a new one
+  in the same family.
+- If a `"rotated"` (already-used) token is presented again, that's a
+  strong signal it leaked — **the whole family is revoked**, not just
+  that one token. This forces re-login, even for the legitimate,
+  currently-active token in that family.
+
+### `issueRefreshToken(user)`
+
+Use this **instead of** `createRefreshToken` at login if you want
+rotation/revocation support. It signs the token and starts tracking it.
+
+```javascript
+import { issueRefreshToken } from "forge-auth";
+
+const refreshToken = await issueRefreshToken({ id: user.id });
+```
+
+### `rotateRefreshToken(token)`
+
+Exchanges a valid, active refresh token for a new access+refresh pair.
+Throws if the token is invalid, expired, revoked, unrecognized, or
+**reused** (in which case the session is revoked as a side effect).
+
+```javascript
+import { rotateRefreshToken } from "forge-auth";
+
+try {
+  const { accessToken, refreshToken } = await rotateRefreshToken(oldToken);
+  // Send both back to the client.
+} catch (err) {
+  // Any failure here (including reuse detection) means: force re-login.
+  console.log(err.message);
+}
+```
+
+### `revokeSession(token)`
+
+Logs out one session — e.g. "log out this device." Safe to call even if
+the token is already gone (no-op, doesn't throw).
+
+```javascript
+import { revokeSession } from "forge-auth";
+
+await revokeSession(refreshTokenFromCookie);
+```
+
+### `revokeAllSessions(userId)`
+
+Logs out **every** session for a user — "log out everywhere," or an
+incident-response action if an account is suspected compromised.
+
+```javascript
+import { revokeAllSessions } from "forge-auth";
+
+await revokeAllSessions(user.id);
+```
+
+### Storage
+
+By default, all of the above use a shared **in-memory store** — fine for
+single-process apps, development, and testing, but state is lost on
+restart and isn't shared across multiple server instances.
+
+```javascript
+import { createRefreshToken, rotateRefreshToken } from "forge-auth"; // wrong import, illustrative only — use issueRefreshToken
+```
+
+If you need an isolated store (e.g. per-test, or a multi-tenant scope),
+create one explicitly and pass it to any refresh function:
+
+```javascript
+import { createRefreshStore, issueRefreshToken, rotateRefreshToken } from "forge-auth";
+
+const store = createRefreshStore();
+
+const token = await issueRefreshToken({ id: user.id }, { store });
+const rotated = await rotateRefreshToken(token, { store });
+```
+
+> A persistent adapter interface (Redis, PostgreSQL, MongoDB) is planned
+> for **v1.0** — any custom store just needs to implement the
+> `RefreshTokenStore` type exported from this package, so switching later
+> won't require changing how you call `rotateRefreshToken`, `revokeSession`,
+> etc.
 
 ## Middleware module
 
@@ -329,6 +441,14 @@ src/
 │   ├── sign.ts               # createAccessToken(), createRefreshToken()
 │   ├── verify.ts              # verifyAccessToken(), verifyRefreshToken()
 │   └── index.ts                # barrel export
+├── refresh/
+│   ├── types.ts              # RefreshTokenStore interface, record shape
+│   ├── store.ts                # InMemoryRefreshStore, createRefreshStore()
+│   ├── hash.ts                   # SHA-256 hashing for token storage/lookup
+│   ├── issue.ts                    # issueRefreshToken()
+│   ├── rotate.ts                     # rotateRefreshToken()
+│   ├── revoke.ts                      # revokeSession(), revokeAllSessions()
+│   └── index.ts                        # barrel export
 ├── middleware/
 │   ├── express.ts               # adds `req.user` typing
 │   ├── authenticate.ts           # authMiddleware
@@ -381,10 +501,19 @@ Doing this early means the project's history lives independently of any
 single chat session or machine — always keep your own repo as the source of
 truth.
 
-## Roadmap
+<!-- ## Roadmap
 
 - [x] **v0.1** — Password hashing (bcrypt) + JWT helpers + Express middleware
 - [ ] **v0.2** — Refresh token rotation with reuse detection
+- [ ] **v0.3** — RBAC / declarative permissions middleware
+- [ ] **v1.0** — Storage adapters (Redis, PostgreSQL, MongoDB) + broader
+      framework support (Fastify, NestJS, Hono) -->
+
+## Roadmap
+
+- [x] **v0.1** — Password hashing (bcrypt) + JWT helpers + Express middleware
+- [x] **v0.2** — Dependencies upgraded to the latest versions
+- [x] **v0.2.1** — Refresh token rotation with reuse detection (in-memory store)
 - [ ] **v0.3** — RBAC / declarative permissions middleware
 - [ ] **v1.0** — Storage adapters (Redis, PostgreSQL, MongoDB) + broader
       framework support (Fastify, NestJS, Hono)
