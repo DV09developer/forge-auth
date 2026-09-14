@@ -9,3 +9,7 @@ export type {
   RefreshTokenRecord,
   RefreshTokenStatus,
 } from "./types.js";
+export {
+  hashRefreshToken,
+  verifyRefreshTokenHash,
+} from "./hash.js";

@@ -23,6 +23,8 @@ export {
   revokeSession,
   revokeAllSessions,
   createRefreshStore,
+  hashRefreshToken,
+  verifyRefreshTokenHash,
 } from "./refresh/index.js";
 export type {
   RotatedTokens,
